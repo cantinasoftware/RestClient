@@ -252,6 +252,7 @@ public class RestClient {
 			public void requestDidFail(Request request, Exception error);
 		}
 
+		private Object mUserData;
 		private Method mMethod;
 		private URL mURL;
 		private InputStream mBody;
@@ -325,6 +326,13 @@ public class RestClient {
 			return null;
 		}
 
+		public Object getUserData() {
+			return mUserData;
+		}
+		
+		public void setUserData(Object userData) {
+			mUserData = userData;
+		}
 	}
 
 	public static class Params {
