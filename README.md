@@ -64,21 +64,55 @@ The block syntax gives you complete control over the outbound HTTP request:
   - set body
   - set listener
 
+Here is an example:
 
     final RestClient.Params params = new RestClient.Params();
     params.add("some-param", "some-value");
     params.add("some-file", new File(Environment.getExternalStorageDirectory(), "image.jpg"), "image/jpeg");
     
     try { 
-      client.put("/some/resource", new RestClient.Block() {
+      client.put("/some/resource, new RestClient.Block() {
     
         @Override
         public void execute(Request request) {
           request.setParams(params);
           request.setListener(Activity.this);
         }
-        
       });
     } catch (MalformedURLException e) { 
       Log.d("RestClient", "Malformed url", e);
     } 
+
+### Using request results
+
+To use request results, you implement the RestClient.Request.Listener interface like this:
+
+    @Override
+    public void requestDidLoad(Request request, Response response) { 
+      try { 
+        Log.d("RestClient", String.format("Request:%s did load response:%s", request.toString(), response.getBodyAsString()));
+      } catch (Exception e) { 
+        Log.e("RestClient", "error", e);
+      } 
+    } 
+    
+    @Override
+    public void requestDidFail(Request request, Exception error) { 
+      Log.d("RestClient", String.format("Request:%s did fail", request.toString()));
+    } 
+
+If you are expecting multiple requests to return a result, you can easily differenciate them by setting the request's userData property like this:
+
+    try {
+      client.put("/some/resource, new RestClient.Block() {
+      
+        @Override
+        public void execute(Request request) {
+          request.setListener(Activity.this);
+          request.setUserData("request-1");
+        } 
+      });
+    } catch (MalformedURLException e) {
+      Log.d("RestClient", "Malformed url", e);
+    }
+
