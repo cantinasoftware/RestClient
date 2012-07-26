@@ -88,28 +88,31 @@ public class RestClient {
 		return mBaseURL;
 	}
 
-	public void setBaseURL(URL u) {
+	public RestClient setBaseURL(URL u) {
 		mBaseURL = u;
+		return this;
 	}
 
-	public void setBaseURL(String url) throws MalformedURLException {
-		mBaseURL = new URL(url);
+	public RestClient setBaseURL(String url) throws MalformedURLException {
+		return setBaseURL(new URL(url));
 	}
 
 	public int getConnectionTimeout() {
 		return mConnectionTimeout;
 	}
 
-	public void setConnectionTimeout(int mConnectionTimeout) {
+	public RestClient setConnectionTimeout(int mConnectionTimeout) {
 		this.mConnectionTimeout = mConnectionTimeout;
+		return this;
 	}
 
 	public int getSocketTimeout() {
 		return mSocketTimeout;
 	}
 
-	public void setSocketTimeout(int mSocketTimeout) {
+	public RestClient setSocketTimeout(int mSocketTimeout) {
 		this.mSocketTimeout = mSocketTimeout;
+		return this;
 	}
 
 	protected void send(Request.Method method, String resource, Params params,
