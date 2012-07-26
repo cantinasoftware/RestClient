@@ -4,10 +4,18 @@ RestClient
 RestClient is a basic REST client for Android.
 
 Its main features are:
-  - supports asynchroneous GET / POST / PUT / DELETE HTTP verbs
+  - supports the following verbs: GET / POST / PUT / DELETE
+  - sends requests asynchroneously
   - handles multipart file uploads
-  - allows anything in the request body
+  - lets you set anything as the response body, even a raw file
+  - JSON support
   - easy and straightforward syntax inspired from RestKit (iOS project)
+
+Dependencies
+============
+
+RestClient will run on Android 2.2 and later and requires the following jars (included in the project):
+  - httpmime-4.2.1.jar (http://hc.apache.org/httpcomponents-client-ga/httpmime/)
 
 Installation
 ============
@@ -25,6 +33,10 @@ Configuring the shared client
 The shared client is a singleton RestClient instance which you can configure with a Base URL.
 
     RestClient client = RestClient.getSharedClient().setBaseURL("http://api.example.com/");
+
+You will almost certainly want to configure timeouts like this:
+
+    RestClient.getSharedClient().setConnectionTimeout(1000).setSocketTimeout(1000);
 
 Making requests
 ---------------
@@ -90,7 +102,8 @@ To use request results, you implement the RestClient.Request.Listener interface 
     @Override
     public void requestDidLoad(Request request, Response response) { 
       try { 
-        Log.d("RestClient", String.format("Request:%s did load response:%s", request.toString(), response.getBodyAsString()));
+        JSONObject jsonResult = response.getBodyAsJSONObject();
+        // Do something with jsonResult
       } catch (Exception e) { 
         Log.e("RestClient", "error", e);
       } 
@@ -116,3 +129,11 @@ If you are expecting multiple requests to return a result, you can easily differ
       Log.d("RestClient", "Malformed url", e);
     }
 
+In your listener you can then easily spot that request:
+
+    @Override
+    public void requestDidLoad(Request request, Response response) {
+      if ("request-1".equals(request.getUserData())) {
+        // This is my request, do something with the response
+      }
+    }
