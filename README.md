@@ -57,12 +57,11 @@ you have to provide RestClient with an object that implements the RestClient.Req
 ### Basic Syntax
 
 The basic syntax is suited when you only need control over the HTTP parameters. If you need more control,
-use the block syntax.
+use the block syntax. The basic syntax goes like this:
 
 
     RestClient.Params params = new RestClient.Params();
     params.add("some-param", "some-value");
-    params.add("some-file", new File(Environment.getExternalStorageDirectory(), "image.jpg"), "image/jpeg");
     
     try {
       client.get("/some/resource", params, this);
@@ -82,7 +81,6 @@ Here is an example:
 
     final RestClient.Params params = new RestClient.Params();
     params.add("some-param", "some-value");
-    params.add("some-file", new File(Environment.getExternalStorageDirectory(), "image.jpg"), "image/jpeg");
     
     try { 
       client.put("/some/resource, new RestClient.Block() {
@@ -97,15 +95,41 @@ Here is an example:
       Log.d("RestClient", "Malformed url", e);
     } 
 
-### Using request results
+### Sending files
+
+There are 2 ways to send files with RestClient:
+  - as part of a Multipart request, to achieve this just add a File param to your Params object
+  - by setting the body of the Request object using block syntax
+
+Both ways are illustrated here:
+
+    // Use params and basic syntax to send a file via multipart
+    File file = ... // your file
+    RestClient.Params params = new RestClient.Params()
+    params.add("my-file", file);
+    RestClient.getSharedClient().put("/some/resource", params, this);
+
+    // Use block syntax and set the file as the body of the request
+    RestClient.getSharedClient().put("some/resource", new RestClient.Block() {
+      @Override
+      public void execute(RestClient.Request request) {
+        request.setListener(this);
+        request.setBody(file);
+      }
+    });
+
+Using request results
+---------------------
+
+### The Listener Interface
 
 To use request results, you implement the RestClient.Request.Listener interface like this:
 
     @Override
     public void requestDidLoad(Request request, Response response) { 
       try { 
-        JSONObject jsonResult = response.getBodyAsJSONObject();
-        // Do something with jsonResult
+        // Do something with the response
+
       } catch (Exception e) { 
         Log.e("RestClient", "error", e);
       } 
@@ -115,6 +139,14 @@ To use request results, you implement the RestClient.Request.Listener interface 
     public void requestDidFail(Request request, Exception error) { 
       Log.d("RestClient", String.format("Request:%s did fail", request.toString()));
     } 
+
+### JSON support
+
+Once you get hold of a Response object, it's easy to turn it into a JSONObject:
+
+    JSONObject jsonResponse = response.getBodyAsJSONObject();
+    
+### UserData
 
 If you are expecting multiple requests to return a result, you can easily differenciate them by setting the request's userData property like this:
 
