@@ -14,7 +14,9 @@ Its main features are:
 Dependencies
 ============
 
-RestClient will run on Android 2.2 and later and requires the following jars (included in the project):
+RestClient will run on Android 2.2 and later.
+RestClient uses [Apache's HttpClient](http://hc.apache.org/httpcomponents-client-ga/index.html) library, which is bundled in Android.
+It also requires the following jars (included in the project):
   - httpmime-4.2.1.jar (http://hc.apache.org/httpcomponents-client-ga/httpmime/)
 
 Installation
