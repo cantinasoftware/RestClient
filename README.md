@@ -89,6 +89,7 @@ Here is an example:
         public void execute(Request request) {
           request.setParams(params);
           request.setListener(Activity.this);
+          request.addHeader("Cookie", "...");
         }
       });
     } catch (MalformedURLException e) { 
