@@ -9,7 +9,7 @@ Its main features are:
   - handles multipart file uploads
   - lets you set anything as the response body, even a raw file
   - JSON support
-  - easy and straightforward syntax inspired from RestKit (iOS project)
+  - easy and straightforward syntax inspired from [RestKit](http://restkit.org/) (iOS project)
 
 Dependencies
 ============
