@@ -101,13 +101,15 @@ There are 2 ways to send files with RestClient:
   - as part of a Multipart request, to achieve this just add a File param to your Params object
   - by setting the body of the Request object using block syntax
 
-Both ways are illustrated here:
+With params as Multipart:
 
     // Use params and basic syntax to send a file via multipart
     File file = ... // your file
     RestClient.Params params = new RestClient.Params()
     params.add("my-file", file);
     RestClient.getSharedClient().put("/some/resource", params, this);
+
+Directly in the body of the request:
 
     // Use block syntax and set the file as the body of the request
     RestClient.getSharedClient().put("some/resource", new RestClient.Block() {
