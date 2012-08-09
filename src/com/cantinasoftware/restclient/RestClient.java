@@ -1,11 +1,9 @@
 package com.cantinasoftware.restclient;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
@@ -178,10 +176,13 @@ public class RestClient {
 	public static class Response {
 		private Request mRequest;
 		private HttpResponse mHttpResponse;
-
-		protected Response(Request request, HttpResponse mResponse) {
+		private ByteArrayOutputStream mResponseContent;
+		protected Response(Request request, HttpResponse mResponse) throws IOException {
 			mRequest = request;
 			mHttpResponse = mResponse;
+			mResponseContent = new ByteArrayOutputStream();
+			mResponse.getEntity().writeTo(mResponseContent);
+			mResponse.getEntity().consumeContent();
 		}
 
 		public void setRequest(Request r) {
@@ -192,28 +193,8 @@ public class RestClient {
 			return mRequest;
 		}
 
-		public String getBodyAsString() throws IllegalStateException,
-				IOException {
-			HttpEntity entity = mHttpResponse.getEntity();
-			InputStream is = entity.getContent();
-			BufferedReader reader = new BufferedReader(
-					new InputStreamReader(is), 2048);
-			StringBuilder sb = new StringBuilder();
-			String line = null;
-			try {
-				while ((line = reader.readLine()) != null) {
-					sb.append(line + "\n");
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-			} finally {
-				try {
-					is.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-			return sb.toString();
+		public String getBodyAsString() {
+			return mResponseContent.toString();
 		}
 
 		public JSONObject getBodyAsJSONObject() throws IllegalStateException,
