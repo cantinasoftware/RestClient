@@ -332,7 +332,7 @@ public class RestClient {
 		public Object getUserData() {
 			return mUserData;
 		}
-		
+
 		public void setUserData(Object userData) {
 			mUserData = userData;
 		}
@@ -396,6 +396,13 @@ public class RestClient {
 				}
 			}
 			return params;
+		}
+
+		public int size() {
+			int size = 0;
+			for (String key : mContent.keySet())
+				size += mContent.get(key).size();
+			return size;
 		}
 	}
 
@@ -475,6 +482,8 @@ public class RestClient {
 							this.mClient.get().getSocketTimeout());
 				}
 
+				Log.d(TAG, String.format("Sending request %s", uriRequest
+						.getURI().toString()));
 				mResult = new DownloadTaskResult(request, new Response(request,
 						client.execute(uriRequest)), null);
 				return null;
@@ -496,7 +505,8 @@ public class RestClient {
 			}
 
 			if (null != result.mException && null != result.mRequest) {
-				Log.e(TAG, "An error occurred", result.mException);
+				Log.e(TAG, String.format("An error occurred: %s",
+						result.mException.getMessage()), result.mException);
 				if (null != result.mRequest.getListener())
 					result.mRequest.getListener().requestDidFail(
 							result.mRequest, result.mException);
@@ -534,11 +544,17 @@ public class RestClient {
 
 	private static URI URIWithQueryString(URL url, Params params)
 			throws ParseException, IOException, URISyntaxException {
+		if (null == params || 0 == params.size())
+			return new URI(url.toString());
+
 		String queryString = EntityUtils.toString(params
 				.toUrlEncodedFormEntity());
 
-		return new URI(String.format("%s%s%s", url.toString(), -1 == url
-				.toString().indexOf('?') ? "?" : "&", queryString));
+		String querySeparator = -1 == url.toString().indexOf('?') ? "?" : "&";
+		String uri = String.format("%s%s%s", url.toString(), querySeparator,
+				queryString);
+		Log.d(TAG, uri);
+		return new URI(uri);
 
 	}
 
