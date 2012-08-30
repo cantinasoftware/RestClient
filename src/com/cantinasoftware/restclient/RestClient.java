@@ -27,12 +27,14 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.cookie.Cookie;
 import org.apache.http.entity.FileEntity;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.mime.MultipartEntity;
 import org.apache.http.entity.mime.content.ContentBody;
 import org.apache.http.entity.mime.content.FileBody;
 import org.apache.http.entity.mime.content.StringBody;
+import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.BasicHttpParams;
@@ -57,25 +59,31 @@ public class RestClient {
 		return sSharedClient;
 	}
 
-	public void setSharedClient(RestClient client) {
-		sSharedClient = client;
-	}
-
 	public static RestClient clientWithBaseURL(URL url) {
-		return null;
+		return new RestClient(url);
 	}
 
-	public static RestClient clientWithBaseURL(String url)
-			throws MalformedURLException {
+	public static RestClient clientWithBaseURL(String url) throws MalformedURLException {
 		return clientWithBaseURL(new URL(url));
 	}
 
+	public void setSharedClient(RestClient client) {
+		sSharedClient = client;
+	}
+	
 	private URL mBaseURL;
+	private DefaultHttpClient mHttpClient;
+	private BasicCookieStore mCookieStore;
 	private int mConnectionTimeout = 1000;
 	private int mSocketTimeout = 1000;
 
 	private RestClient(URL baseURL) {
 		mBaseURL = baseURL;
+		
+		mHttpClient = new DefaultHttpClient();
+		mCookieStore = new BasicCookieStore();
+		mHttpClient.setCookieStore(mCookieStore);
+		setHttpClientTimeoutParameters();
 	}
 
 	private URL makeURL(String resource) throws MalformedURLException {
@@ -91,6 +99,10 @@ public class RestClient {
 		return this;
 	}
 
+	public HttpClient getHttpClient() {
+		return mHttpClient;
+	}
+	
 	public RestClient setBaseURL(String url) throws MalformedURLException {
 		return setBaseURL(new URL(url));
 	}
@@ -101,6 +113,7 @@ public class RestClient {
 
 	public RestClient setConnectionTimeout(int mConnectionTimeout) {
 		this.mConnectionTimeout = mConnectionTimeout;
+		setHttpClientTimeoutParameters();
 		return this;
 	}
 
@@ -110,9 +123,15 @@ public class RestClient {
 
 	public RestClient setSocketTimeout(int mSocketTimeout) {
 		this.mSocketTimeout = mSocketTimeout;
+		setHttpClientTimeoutParameters();
 		return this;
 	}
 
+	private void setHttpClientTimeoutParameters() {
+		HttpConnectionParams.setConnectionTimeout(this.mHttpClient.getParams(), this.getConnectionTimeout());
+		HttpConnectionParams.setSoTimeout(this.mHttpClient.getParams(), this.getConnectionTimeout());
+	}
+	
 	protected void send(Request.Method method, String resource, Params params,
 			Request.Listener listener) throws MalformedURLException {
 		Request request = new Request(makeURL(resource));
@@ -169,6 +188,59 @@ public class RestClient {
 
 	}
 
+	public List<Cookie> getCookies() {
+		return this.mCookieStore.getCookies();
+	}
+	
+	public List<Cookie> getCookies(String domain) {
+		List<Cookie> cookieList = new ArrayList<Cookie>();
+		for(Cookie c : this.mHttpClient.getCookieStore().getCookies()) {
+			if(c.getDomain().compareTo(domain) == 0) {
+				cookieList.add(c);
+			}
+		}
+		
+		return cookieList;
+	}
+	
+	public void deleteCookies() {
+		this.mCookieStore.clear();
+	}
+
+	public void deleteCookies(String domain) {
+		List<Cookie> cookieList = new ArrayList<Cookie>();
+		for(Cookie c : this.mCookieStore.getCookies()) {
+			if(c.getDomain().compareTo(domain) != 0) {
+				cookieList.add(c);
+			}
+		}
+		
+		// Remove all cookies
+		this.mCookieStore.clear();
+		
+		// Add only those that do not match the specified domain
+		for(Cookie c : cookieList) {
+			this.mCookieStore.addCookie(c);
+		}
+	}
+	
+	public void deleteCookie(Cookie cookie) {
+		List<Cookie> cookieList = new ArrayList<Cookie>();
+		for(Cookie c : this.mCookieStore.getCookies()) {
+			if(c != cookie) {
+				cookieList.add(c);
+			}
+		}
+		
+		// Remove all cookies
+		this.mCookieStore.clear();
+		
+		// Add all except the specified one
+		for(Cookie c : cookieList) {
+			this.mCookieStore.addCookie(c);
+		}
+	}
+	
 	public static interface Block {
 		public void execute(Request request);
 	}
@@ -452,25 +524,15 @@ public class RestClient {
 				// Add headers
 				for (NameValuePair header : request.getHeaders())
 					uriRequest.addHeader(header.getName(), header.getValue());
-
-				// Create and configure the http client
-				HttpClient client = new DefaultHttpClient();
-				if (null != this.mClient.get()) {
-					HttpConnectionParams.setConnectionTimeout(client
-							.getParams(), this.mClient.get()
-							.getConnectionTimeout());
-					HttpConnectionParams.setSoTimeout(client.getParams(),
-							this.mClient.get().getSocketTimeout());
-				}
-
-				Log.d(TAG, String.format("Sending request %s", uriRequest
-						.getURI().toString()));
-				mResult = new DownloadTaskResult(request, new Response(request,
-						client.execute(uriRequest)), null);
+				
+				Log.d(TAG, String.format("Sending request %s", uriRequest.getURI().toString()));
+				mResult = new DownloadTaskResult(request, new Response(request,	
+						this.mClient.get().getHttpClient().execute(uriRequest)), null);
+								
 				return null;
 
 			} catch (Exception e) {
-				mResult = new DownloadTaskResult(request, null, e);
+				this.mResult = new DownloadTaskResult(request, null, e);
 				return null;
 			}
 		}
@@ -538,5 +600,4 @@ public class RestClient {
 		return new URI(uri);
 
 	}
-
 }
