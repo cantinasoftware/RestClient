@@ -76,6 +76,7 @@ public class RestClient {
 	private BasicCookieStore mCookieStore;
 	private int mConnectionTimeout = 1000;
 	private int mSocketTimeout = 1000;
+	private Request mDefaultRequest;
 
 	private RestClient(URL baseURL) {
 		mBaseURL = baseURL;
@@ -132,10 +133,18 @@ public class RestClient {
 		HttpConnectionParams.setSoTimeout(this.mHttpClient.getParams(), this.getConnectionTimeout());
 	}
 	
+	public Request getDefaultRequest() {
+		return this.mDefaultRequest;
+	}
+
+	public void setDefaultRequest(Request defaultRequest) {
+		// The default request can be set to null to clear the constant headers
+		this.mDefaultRequest = defaultRequest;
+	}
+	
 	protected void send(Request.Method method, String resource, Params params,
 			Request.Listener listener) throws MalformedURLException {
-		Request request = new Request(makeURL(resource));
-		request.setMethod(method);
+		Request request = prepareRequest(method, resource);
 		request.setParams(params);
 		request.setListener(listener);
 		new DownloadTask(this, request).execute();
@@ -143,12 +152,24 @@ public class RestClient {
 
 	protected void send(Request.Method method, String resource, Block block)
 			throws MalformedURLException {
-		Request request = new Request(makeURL(resource));
-		request.setMethod(method);
+		Request request = prepareRequest(method, resource);
 		block.execute(request);
 		new DownloadTask(this, request).execute();
 	}
 
+	private Request prepareRequest(Request.Method method, String resource)
+			throws MalformedURLException {
+		Request request = new Request(makeURL(resource));
+		request.setMethod(method);
+		if(this.mDefaultRequest != null) {
+			// Add constant headers from the default request
+			for (NameValuePair header : this.mDefaultRequest.getHeaders())
+				request.addHeader(header.getName(), header.getValue());
+		}
+		
+		return request;
+	}
+	
 	public void get(String resource, Params params, Request.Listener listener)
 			throws MalformedURLException {
 		send(Request.Method.GET, resource, params, listener);
