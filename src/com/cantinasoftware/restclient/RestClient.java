@@ -88,7 +88,7 @@ public class RestClient {
 	private Request mDefaultRequest;
 	
 	private RestClient(URL baseURL, Context context) {
-		mContext  = context;
+		mContext  = context.getApplicationContext();
 		mBaseURL = baseURL;
 		
 		mHttpClient = new DefaultHttpClient();
