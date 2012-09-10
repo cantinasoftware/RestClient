@@ -1,9 +1,12 @@
 package com.cantinasoftware.restclient;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.net.MalformedURLException;
@@ -45,46 +48,54 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
+import android.preference.PreferenceManager;
+import android.util.Base64;
 import android.util.Log;
 
 public class RestClient {
 	private static final String TAG = "RestClient";
-
+	private static final String COOKIE_STORE_KEY = "CookieStore";
+	
 	private static RestClient sSharedClient;
 
-	public static RestClient getSharedClient() {
+	public static RestClient getSharedClient(Context context) {
 		if (null == sSharedClient)
-			sSharedClient = new RestClient(null);
+			sSharedClient = new RestClient(null, context);
 		return sSharedClient;
 	}
 
-	public static RestClient clientWithBaseURL(URL url) {
-		return new RestClient(url);
+	public static RestClient clientWithBaseURL(URL url, Context context) {
+		return new RestClient(url, context);
 	}
 
-	public static RestClient clientWithBaseURL(String url) throws MalformedURLException {
-		return clientWithBaseURL(new URL(url));
+	public static RestClient clientWithBaseURL(String url, Context context) throws MalformedURLException {
+		return clientWithBaseURL(new URL(url), context);
 	}
 
 	public void setSharedClient(RestClient client) {
 		sSharedClient = client;
 	}
 	
+	private Context mContext;
 	private URL mBaseURL;
 	private DefaultHttpClient mHttpClient;
 	private BasicCookieStore mCookieStore;
 	private int mConnectionTimeout = 1000;
 	private int mSocketTimeout = 1000;
 	private Request mDefaultRequest;
-
-	private RestClient(URL baseURL) {
+	
+	private RestClient(URL baseURL, Context context) {
+		mContext  = context;
 		mBaseURL = baseURL;
 		
 		mHttpClient = new DefaultHttpClient();
 		mCookieStore = new BasicCookieStore();
 		mHttpClient.setCookieStore(mCookieStore);
 		setHttpClientTimeoutParameters();
+		mCookieStore = deserializeCookieStore();
 	}
 
 	private URL makeURL(String resource) throws MalformedURLException {
@@ -262,6 +273,51 @@ public class RestClient {
 		}
 	}
 	
+	private void serializeCookieStore() {
+		try {
+			SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+			SharedPreferences.Editor editor = sp.edit();
+			editor.putString(COOKIE_STORE_KEY, serializeToString(mCookieStore));
+			editor.commit();
+		} catch (IOException e) {
+			Log.e(TAG, "Error serializing cookie store: " + e.getMessage());
+		}
+	}
+
+	private BasicCookieStore deserializeCookieStore() {
+		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+		BasicCookieStore cookieStore;
+		if(sp.contains("cookieStore")) {
+			try {
+				cookieStore = (BasicCookieStore)deserializeFromString(sp.getString(COOKIE_STORE_KEY, ""));
+			} catch (Exception e) {
+				Log.e(TAG, "Error deserializing cookie store: " + e.getMessage());
+				cookieStore = new BasicCookieStore();
+			}	
+		}
+		else {
+			cookieStore = new BasicCookieStore();
+		}
+		
+		return cookieStore;
+	}
+	
+    private static Object deserializeFromString(String s) throws IOException, ClassNotFoundException {
+        byte[] data = Base64.decode(s, Base64.DEFAULT);
+        ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(data));
+        Object o = ois.readObject();
+        ois.close();
+        return o;
+    }
+
+    private static String serializeToString(Object o) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(baos);
+        oos.writeObject(o);
+        oos.close();
+        return new String(Base64.encode(baos.toByteArray(), Base64.DEFAULT));
+    }
+
 	public static interface Block {
 		public void execute(Request request);
 	}
@@ -549,7 +605,9 @@ public class RestClient {
 				Log.d(TAG, String.format("Sending request %s", uriRequest.getURI().toString()));
 				mResult = new DownloadTaskResult(request, new Response(request,	
 						this.mClient.get().getHttpClient().execute(uriRequest)), null);
-								
+				
+				mClient.get().serializeCookieStore();
+				
 				return null;
 
 			} catch (Exception e) {
