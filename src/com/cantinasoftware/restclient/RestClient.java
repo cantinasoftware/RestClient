@@ -161,6 +161,19 @@ public class RestClient {
 		block.execute(request);
 		new DownloadTask(this, request).execute();
 	}
+	
+	public Response sendSynchroneous(Request.Method method, String resource, Block block) 
+		throws Exception {
+		Request request = prepareRequest(method, resource);
+		block.execute(request);
+		DownloadTask task = new DownloadTask(this, request);
+		task.doInBackground();
+		task.execute();
+		DownloadTaskResult result = task.mResult;
+		if (null != result.mException)
+			throw result.mException;
+		return result.mResponse;
+	}
 
 	private Request prepareRequest(Request.Method method, String resource)
 			throws MalformedURLException {
@@ -538,7 +551,9 @@ public class RestClient {
 				case DELETE:
 					HttpDelete deleteRequest = new HttpDelete(request.getURL()
 							.toURI());
-					deleteRequest.setParams(request.getParams().toHttpParams());
+					if(request.getParams() != null) {
+						deleteRequest.setParams(request.getParams().toHttpParams());
+					}
 					uriRequest = deleteRequest;
 					break;
 				default:
