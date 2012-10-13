@@ -28,6 +28,9 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.conn.scheme.PlainSocketFactory;
+import org.apache.http.conn.scheme.Scheme;
+import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.cookie.Cookie;
 import org.apache.http.entity.FileEntity;
 import org.apache.http.entity.InputStreamEntity;
@@ -36,6 +39,7 @@ import org.apache.http.entity.mime.content.ContentBody;
 import org.apache.http.entity.mime.content.FileBody;
 import org.apache.http.entity.mime.content.StringBody;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpConnectionParams;
@@ -50,7 +54,6 @@ import com.loopj.android.http.PersistentCookieStore;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.util.Log;
-
 public class RestClient {
 	private static final String TAG = "RestClient";
 	
@@ -58,19 +61,28 @@ public class RestClient {
 
 	public static RestClient getSharedClient(Context context) {
 		if (null == sSharedClient)
-			sSharedClient = new RestClient(null, context);
+			sSharedClient = new RestClient(null, context, null);
 		return sSharedClient;
 	}
 
+	public static RestClient clientWithBaseURL(URL url, Context context, Option[] options) {
+		return new RestClient(url, context, options);
+	}
+
+	public static RestClient clientWithBaseURL(String url, Context context, Option[] options) throws MalformedURLException {
+		return clientWithBaseURL(new URL(url), context, options);
+	}
+
 	public static RestClient clientWithBaseURL(URL url, Context context) {
-		return new RestClient(url, context);
+		return new RestClient(url, context, null);
 	}
 
 	public static RestClient clientWithBaseURL(String url, Context context) throws MalformedURLException {
-		return clientWithBaseURL(new URL(url), context);
+		return clientWithBaseURL(new URL(url), context, null);
 	}
 
-	public void setSharedClient(RestClient client) {
+
+	public static void setSharedClient(RestClient client) {
 		sSharedClient = client;
 	}
 	
@@ -82,11 +94,11 @@ public class RestClient {
 	private int mSocketTimeout = 1000;
 	private Request mDefaultRequest;
 	
-	private RestClient(URL baseURL, Context context) {
+	private RestClient(URL baseURL, Context context, Option[] options) {
 		mContext  = context.getApplicationContext();
 		mBaseURL = baseURL;
 		
-		mHttpClient = new DefaultHttpClient();
+		mHttpClient = buildHttpClient(options);
 		mCookieStore = new PersistentCookieStore(mContext);
 		mHttpClient.setCookieStore(mCookieStore);
 		setHttpClientTimeoutParameters();
@@ -278,6 +290,30 @@ public class RestClient {
 		for(Cookie c : cookieList) {
 			this.mCookieStore.addCookie(c);
 		}
+	}
+	
+	public enum Option {
+		DISABLE_CERTIFICATE_VALIDATION
+	}
+	
+	private static DefaultHttpClient buildHttpClient(Option[] options) {
+		boolean disableCertificateValidation = false;
+		for (int i = 0; null != options && i < options.length; i++) {
+			if (Option.DISABLE_CERTIFICATE_VALIDATION == options[i])
+				disableCertificateValidation = true;
+		}
+		
+		if (disableCertificateValidation) {
+			HttpParams params = new BasicHttpParams();
+			SchemeRegistry registry = new SchemeRegistry();
+		    registry.register(new Scheme("http", new PlainSocketFactory(), 80));
+		    registry.register(new Scheme("https", new SelfSignedCertificatesHelpers.FakeSocketFactory(), 443));
+		    return new DefaultHttpClient(new ThreadSafeClientConnManager(params, registry), params);
+			
+		} else {
+			return new DefaultHttpClient();
+		}
+			
 	}
 
 	public static interface Block {
@@ -646,4 +682,6 @@ public class RestClient {
 		return new URI(uri);
 
 	}
+	
+
 }
