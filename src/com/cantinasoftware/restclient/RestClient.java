@@ -10,6 +10,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -476,8 +477,12 @@ public class RestClient {
 		}
 
 		public boolean add(String name, String value) {
+			return add(name, value, "text/plain", Charset.defaultCharset());
+		}
+		
+		public boolean add(String name, String value, String mimeType, Charset charset) {
 			try {
-				getList(name).add(new StringBody(value));
+				getList(name).add(new StringBody(value, mimeType, charset));
 			} catch (UnsupportedEncodingException e) {
 				Log.e(TAG, String.format("Unsupported encoding for param:%s",
 						name), e);
