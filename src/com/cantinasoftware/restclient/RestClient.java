@@ -33,6 +33,7 @@ import org.apache.http.conn.scheme.PlainSocketFactory;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.cookie.Cookie;
+import org.apache.http.entity.BufferedHttpEntity;
 import org.apache.http.entity.FileEntity;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.mime.MultipartEntity;
@@ -445,12 +446,13 @@ public class RestClient {
 			return mMethod;
 		}
 
-		public HttpEntity getEntity() {
+		public HttpEntity getEntity() throws IOException {
 			if (null != mParams) {
 				return mParams.toMultipartEntity();
 			}
 			if (null != mBody) {
-				return new InputStreamEntity(mBody, mBodyLength);
+				//http://stackoverflow.com/questions/8222929/httppost-failed-due-to-cannot-retry-request-with-a-non-repeatable-request-entit
+				return new BufferedHttpEntity(new InputStreamEntity(mBody, mBodyLength));
 			}
 			if (null != mFile) {
 				return new FileEntity(mFile, mFileMime);
