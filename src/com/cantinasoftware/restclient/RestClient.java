@@ -56,9 +56,10 @@ import com.loopj.android.http.PersistentCookieStore;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.util.Log;
+
 public class RestClient {
 	private static final String TAG = "RestClient";
-	
+
 	private static RestClient sSharedClient;
 
 	public static RestClient getSharedClient(Context context) {
@@ -67,11 +68,13 @@ public class RestClient {
 		return sSharedClient;
 	}
 
-	public static RestClient clientWithBaseURL(URL url, Context context, Option[] options) {
+	public static RestClient clientWithBaseURL(URL url, Context context,
+			Option[] options) {
 		return new RestClient(url, context, options);
 	}
 
-	public static RestClient clientWithBaseURL(String url, Context context, Option[] options) throws MalformedURLException {
+	public static RestClient clientWithBaseURL(String url, Context context,
+			Option[] options) throws MalformedURLException {
 		return clientWithBaseURL(new URL(url), context, options);
 	}
 
@@ -79,15 +82,15 @@ public class RestClient {
 		return new RestClient(url, context, null);
 	}
 
-	public static RestClient clientWithBaseURL(String url, Context context) throws MalformedURLException {
+	public static RestClient clientWithBaseURL(String url, Context context)
+			throws MalformedURLException {
 		return clientWithBaseURL(new URL(url), context, null);
 	}
-
 
 	public static void setSharedClient(RestClient client) {
 		sSharedClient = client;
 	}
-	
+
 	private Context mContext;
 	private URL mBaseURL;
 	private DefaultHttpClient mHttpClient;
@@ -95,11 +98,11 @@ public class RestClient {
 	private int mConnectionTimeout = 1000;
 	private int mSocketTimeout = 1000;
 	private Request mDefaultRequest;
-	
+
 	private RestClient(URL baseURL, Context context, Option[] options) {
-		mContext  = context.getApplicationContext();
+		mContext = context.getApplicationContext();
 		mBaseURL = baseURL;
-		
+
 		mHttpClient = buildHttpClient(options);
 		mCookieStore = new PersistentCookieStore(mContext);
 		mHttpClient.setCookieStore(mCookieStore);
@@ -122,36 +125,56 @@ public class RestClient {
 	public HttpClient getHttpClient() {
 		return mHttpClient;
 	}
-	
+
 	public RestClient setBaseURL(String url) throws MalformedURLException {
 		return setBaseURL(new URL(url));
 	}
 
+	/**
+	 * Get the current connection timeout in milliseconds
+	 * @return The current connection timeout in milliseconds
+	 */
 	public int getConnectionTimeout() {
 		return mConnectionTimeout;
 	}
 
-	public RestClient setConnectionTimeout(int mConnectionTimeout) {
-		this.mConnectionTimeout = mConnectionTimeout;
+	/**
+	 * Configure this client's connection timeout
+	 * @param connectionTimeout Timeout in milliseconds
+	 * @return
+	 */
+	public RestClient setConnectionTimeout(int connectionTimeout) {
+		this.mConnectionTimeout = connectionTimeout;
 		setHttpClientTimeoutParameters();
 		return this;
 	}
 
+	/**
+	 * The current socket timeout
+	 * @return The current socket timeout in milliseconds
+	 */
 	public int getSocketTimeout() {
 		return mSocketTimeout;
 	}
 
-	public RestClient setSocketTimeout(int mSocketTimeout) {
-		this.mSocketTimeout = mSocketTimeout;
+	/**
+	 * Configure this client's connection timeout
+	 * @param socketTimeout Timeout in milliseconds
+	 * @return
+	 */
+	public RestClient setSocketTimeout(int socketTimeout) {
+		this.mSocketTimeout = socketTimeout;
 		setHttpClientTimeoutParameters();
 		return this;
 	}
 
 	private void setHttpClientTimeoutParameters() {
-		HttpConnectionParams.setConnectionTimeout(this.mHttpClient.getParams(), this.getConnectionTimeout());
-		HttpConnectionParams.setSoTimeout(this.mHttpClient.getParams(), this.getConnectionTimeout());
+		HttpConnectionParams.setConnectionTimeout(this.mHttpClient.getParams(),
+				this.getConnectionTimeout());
+		HttpConnectionParams.setSoTimeout(this.mHttpClient.getParams(),
+				this.getConnectionTimeout());
 	}
-	
+
 	public Request getDefaultRequest() {
 		return this.mDefaultRequest;
 	}
@@ -160,7 +183,7 @@ public class RestClient {
 		// The default request can be set to null to clear the constant headers
 		this.mDefaultRequest = defaultRequest;
 	}
-	
+
 	protected void send(Request.Method method, String resource, Params params,
 			Request.Listener listener) throws MalformedURLException {
 		Request request = prepareRequest(method, resource);
@@ -175,14 +198,18 @@ public class RestClient {
 		block.execute(request);
 		new DownloadTask(this, request).execute();
 	}
-	
-	public Response sendSynchroneous(Request.Method method, String resource, Block block) 
-		throws Exception {
+
+	public Response sendSynchroneous(Request.Method method, String resource,
+			Block block) throws Exception {
 		Request request = prepareRequest(method, resource);
-		block.execute(request);
+		if (null != block)
+			block.execute(request);
 		DownloadTask task = new DownloadTask(this, request);
-		task.doInBackground();
 		task.execute();
+		
+		// Wait for execution
+		task.get();
+		
 		DownloadTaskResult result = task.mResult;
 		if (null != result.mException)
 			throw result.mException;
@@ -193,15 +220,15 @@ public class RestClient {
 			throws MalformedURLException {
 		Request request = new Request(makeURL(resource));
 		request.setMethod(method);
-		if(this.mDefaultRequest != null) {
+		if (this.mDefaultRequest != null) {
 			// Add constant headers from the default request
 			for (NameValuePair header : this.mDefaultRequest.getHeaders())
 				request.addHeader(header.getName(), header.getValue());
 		}
-		
+
 		return request;
 	}
-	
+
 	public void get(String resource, Params params, Request.Listener listener)
 			throws MalformedURLException {
 		send(Request.Method.GET, resource, params, listener);
@@ -244,78 +271,80 @@ public class RestClient {
 	public List<Cookie> getCookies() {
 		return this.mCookieStore.getCookies();
 	}
-	
+
 	public List<Cookie> getCookies(String domain) {
 		List<Cookie> cookieList = new ArrayList<Cookie>();
-		for(Cookie c : this.mHttpClient.getCookieStore().getCookies()) {
-			if(c.getDomain().compareTo(domain) == 0) {
+		for (Cookie c : this.mHttpClient.getCookieStore().getCookies()) {
+			if (c.getDomain().compareTo(domain) == 0) {
 				cookieList.add(c);
 			}
 		}
-		
+
 		return cookieList;
 	}
-	
+
 	public void deleteCookies() {
 		this.mCookieStore.clear();
 	}
 
 	public void deleteCookies(String domain) {
 		List<Cookie> cookieList = new ArrayList<Cookie>();
-		for(Cookie c : this.mCookieStore.getCookies()) {
-			if(c.getDomain().compareTo(domain) != 0) {
+		for (Cookie c : this.mCookieStore.getCookies()) {
+			if (c.getDomain().compareTo(domain) != 0) {
 				cookieList.add(c);
 			}
 		}
-		
+
 		// Remove all cookies
 		this.mCookieStore.clear();
-		
+
 		// Add only those that do not match the specified domain
-		for(Cookie c : cookieList) {
+		for (Cookie c : cookieList) {
 			this.mCookieStore.addCookie(c);
 		}
 	}
-	
+
 	public void deleteCookie(Cookie cookie) {
 		List<Cookie> cookieList = new ArrayList<Cookie>();
-		for(Cookie c : this.mCookieStore.getCookies()) {
-			if(c != cookie) {
+		for (Cookie c : this.mCookieStore.getCookies()) {
+			if (c != cookie) {
 				cookieList.add(c);
 			}
 		}
-		
+
 		// Remove all cookies
 		this.mCookieStore.clear();
-		
+
 		// Add all except the specified one
-		for(Cookie c : cookieList) {
+		for (Cookie c : cookieList) {
 			this.mCookieStore.addCookie(c);
 		}
 	}
-	
+
 	public enum Option {
 		DISABLE_CERTIFICATE_VALIDATION
 	}
-	
+
 	private static DefaultHttpClient buildHttpClient(Option[] options) {
 		boolean disableCertificateValidation = false;
 		for (int i = 0; null != options && i < options.length; i++) {
 			if (Option.DISABLE_CERTIFICATE_VALIDATION == options[i])
 				disableCertificateValidation = true;
 		}
-		
+
 		if (disableCertificateValidation) {
 			HttpParams params = new BasicHttpParams();
 			SchemeRegistry registry = new SchemeRegistry();
-		    registry.register(new Scheme("http", new PlainSocketFactory(), 80));
-		    registry.register(new Scheme("https", new SelfSignedCertificatesHelpers.FakeSocketFactory(), 443));
-		    return new DefaultHttpClient(new ThreadSafeClientConnManager(params, registry), params);
-			
+			registry.register(new Scheme("http", new PlainSocketFactory(), 80));
+			registry.register(new Scheme("https",
+					new SelfSignedCertificatesHelpers.FakeSocketFactory(), 443));
+			return new DefaultHttpClient(new ThreadSafeClientConnManager(
+					params, registry), params);
+
 		} else {
 			return new DefaultHttpClient();
 		}
-			
+
 	}
 
 	public static interface Block {
@@ -326,7 +355,9 @@ public class RestClient {
 		private Request mRequest;
 		private HttpResponse mHttpResponse;
 		private ByteArrayOutputStream mResponseContent;
-		protected Response(Request request, HttpResponse mResponse) throws IOException {
+
+		protected Response(Request request, HttpResponse mResponse)
+				throws IOException {
 			mRequest = request;
 			mHttpResponse = mResponse;
 			mResponseContent = new ByteArrayOutputStream();
@@ -451,8 +482,9 @@ public class RestClient {
 				return mParams.toMultipartEntity();
 			}
 			if (null != mBody) {
-				//http://stackoverflow.com/questions/8222929/httppost-failed-due-to-cannot-retry-request-with-a-non-repeatable-request-entit
-				return new BufferedHttpEntity(new InputStreamEntity(mBody, mBodyLength));
+				// http://stackoverflow.com/questions/8222929/httppost-failed-due-to-cannot-retry-request-with-a-non-repeatable-request-entit
+				return new BufferedHttpEntity(new InputStreamEntity(mBody,
+						mBodyLength));
 			}
 			if (null != mFile) {
 				return new FileEntity(mFile, mFileMime);
@@ -481,8 +513,9 @@ public class RestClient {
 		public boolean add(String name, String value) {
 			return add(name, value, "text/plain", Charset.defaultCharset());
 		}
-		
-		public boolean add(String name, String value, String mimeType, Charset charset) {
+
+		public boolean add(String name, String value, String mimeType,
+				Charset charset) {
 			try {
 				getList(name).add(new StringBody(value, mimeType, charset));
 			} catch (UnsupportedEncodingException e) {
@@ -594,8 +627,9 @@ public class RestClient {
 				case DELETE:
 					HttpDelete deleteRequest = new HttpDelete(request.getURL()
 							.toURI());
-					if(request.getParams() != null) {
-						deleteRequest.setParams(request.getParams().toHttpParams());
+					if (request.getParams() != null) {
+						deleteRequest.setParams(request.getParams()
+								.toHttpParams());
 					}
 					uriRequest = deleteRequest;
 					break;
@@ -609,15 +643,18 @@ public class RestClient {
 				for (NameValuePair header : request.getHeaders()) {
 					uriRequest.addHeader(header.getName(), header.getValue());
 				}
-				if(!uriRequest.containsHeader("Accept-Language")) {
-					uriRequest.addHeader("Accept-Language", 
-							String.format("%s-%s", Locale.getDefault().getLanguage(), Locale.getDefault().getCountry().toLowerCase()));
+				if (!uriRequest.containsHeader("Accept-Language")) {
+					uriRequest.addHeader("Accept-Language", String.format(
+							"%s-%s", Locale.getDefault().getLanguage(), Locale
+									.getDefault().getCountry().toLowerCase()));
 				}
-				
-				Log.d(TAG, String.format("Sending request %s", uriRequest.getURI().toString()));
-				mResult = new DownloadTaskResult(request, new Response(request,	
-						this.mClient.get().getHttpClient().execute(uriRequest)), null);
-				
+
+				Log.d(TAG, String.format("Sending request %s", uriRequest
+						.getURI().toString()));
+				mResult = new DownloadTaskResult(request,
+						new Response(request, this.mClient.get()
+								.getHttpClient().execute(uriRequest)), null);
+
 				return null;
 
 			} catch (Exception e) {
@@ -689,6 +726,5 @@ public class RestClient {
 		return new URI(uri);
 
 	}
-	
 
 }
