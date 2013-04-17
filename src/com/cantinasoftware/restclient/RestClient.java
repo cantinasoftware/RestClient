@@ -565,6 +565,34 @@ public class RestClient {
 			}
 			return params;
 		}
+		
+		public List<String> getPlainTextParamNames() {
+			ArrayList<String> paramNames = new ArrayList<String>();
+			for (String name : mContent.keySet()) {
+				for (ContentBody body : mContent.get(name)) {
+					if (body instanceof StringBody) {
+						paramNames.add(name);
+					}
+				}
+			}
+			return paramNames;
+		}
+
+		public String getPlainTextParamValue(String name) {
+			List<ContentBody> bodies = mContent.get(name);
+			if (0 == bodies.size())
+				return null;
+			ContentBody firstBody = bodies.get(0);
+
+			if (firstBody instanceof StringBody) {
+				try {
+					return contentBodyToString(firstBody);
+				} catch (IOException e) {
+					Log.e(TAG, "Could not decode content body", e);
+				}
+			}
+			return null;
+		}
 
 		public int size() {
 			int size = 0;
