@@ -205,15 +205,24 @@ public class RestClient {
 		if (null != block)
 			block.execute(request);
 		DownloadTask task = new DownloadTask(this, request);
+		task.setIsSynchroneous(true);
 		task.execute();
 		
 		// Wait for execution
 		task.get();
 		
 		DownloadTaskResult result = task.mResult;
-		if (null != result.mException)
-			throw result.mException;
-		return result.mResponse;
+		
+		Exception e = result.mException;
+		Response r = result.mResponse;
+		
+		task.mRequest = null;
+		task.mResult = null;
+
+		if (null != e)
+			throw e;
+		
+		return r;
 	}
 
 	private Request prepareRequest(Request.Method method, String resource)
@@ -620,10 +629,15 @@ public class RestClient {
 		WeakReference<RestClient> mClient;
 		Request mRequest;
 		DownloadTaskResult mResult;
+		boolean mIsSynchroneous;
 
 		public DownloadTask(RestClient client, Request request) {
 			mClient = new WeakReference<RestClient>(client);
 			mRequest = request;
+		}
+
+		public void setIsSynchroneous(boolean b) {
+			mIsSynchroneous = b;
 		}
 
 		@Override
@@ -707,12 +721,16 @@ public class RestClient {
 				if (null != result.mRequest.getListener())
 					result.mRequest.getListener().requestDidFail(
 							result.mRequest, result.mException);
-				result.mRequest.setListener(null);
-				result.mRequest = null;
-				if (null != result.mResponse)
-					result.mResponse.mRequest = null;
-				result.mResponse = null;
-				mResult = null;
+				
+				// If we're async, nullify all references
+				if (!mIsSynchroneous) {
+					result.mRequest.setListener(null);
+					result.mRequest = null;
+					if (null != result.mResponse)
+						result.mResponse.mRequest = null;
+					result.mResponse = null;
+					mResult = null;
+				}
 				return;
 			}
 
@@ -720,11 +738,14 @@ public class RestClient {
 				if (null != result.mRequest.getListener())
 					result.mRequest.getListener().requestDidLoad(
 							result.mRequest, result.mResponse);
-				result.mRequest.setListener(null);
-				result.mResponse.mRequest = null;
-				result.mRequest = null;
-				result.mResponse = null;
-				mResult = null;
+				// If we're async, nullify all references
+				if (!mIsSynchroneous) {
+					result.mRequest.setListener(null);
+					result.mResponse.mRequest = null;
+					result.mRequest = null;
+					result.mResponse = null;
+					mResult = null;
+				}
 				return;
 			}
 			mResult = null;
