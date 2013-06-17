@@ -591,11 +591,11 @@ public class RestClient {
 			List<ContentBody> bodies = mContent.get(name);
 			if (0 == bodies.size())
 				return null;
-			ContentBody firstBody = bodies.get(0);
+			ContentBody lastBody = bodies.get(bodies.size() - 1);
 
-			if (firstBody instanceof StringBody) {
+			if (lastBody instanceof StringBody) {
 				try {
-					return contentBodyToString(firstBody);
+					return contentBodyToString(lastBody);
 				} catch (IOException e) {
 					Log.e(TAG, "Could not decode content body", e);
 				}
